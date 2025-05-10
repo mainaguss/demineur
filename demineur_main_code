@@ -1,2 +1,33 @@
+from tkinter import *
+from random import randint 
 
-print('hello world')
+x1,y1,x2,y2= 60,0,60,390
+x3,y3,x4,y4= 0,30,480,30
+
+valeursbombes=[]
+commence= 0
+def commencerjeu():
+    global x1,y1,x2,y2,x3,y3,x4,y4
+    global commence 
+    if commence == 0:
+        for i in range(8):
+            can1.create_line(60*i,0,60*i,390,width=1) 
+        for g in range(13):
+            can1.create_line(0,30*g,480,30*g,width = 1)
+        for h in range(10):
+            colonne= randint(1,8)
+            rang= randint(1,13)
+            can1.create_oval(60*colonne+ 5,30*rang + 5 ,60*colonne+55,30*rang+25,fill = 'dark red')
+
+
+
+
+dem= Tk() 
+can1= Canvas(dem, height= 390, width= 480) #30 de plus dans chaque valeur par rapport à la grille pour laisser de la place pour les contours 
+can1.pack()
+commencer= Button(dem,text="commencerjeu", command = commencerjeu)
+commencer.pack(side= BOTTOM)
+
+
+    
+dem.mainloop()
