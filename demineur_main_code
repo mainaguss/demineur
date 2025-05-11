@@ -1,3 +1,4 @@
+'''
 from tkinter import *
 from random import randint 
 
@@ -31,3 +32,209 @@ commencer.pack(side= BOTTOM)
 
     
 dem.mainloop()
+'''
+#############################################################################################
+LEO version 11/05/2025
+import tkinter as tk
+from tkinter import messagebox
+import random
+
+
+class Demineur:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Démineur")
+
+        # Configuration par défaut
+        self.lignes = 8
+        self.colonnes = 13
+        self.mines = 10
+
+        # Variables du jeu
+        self.grille = []
+        self.cases_decouvertes = []
+        self.drapeaux = []
+        self.partie_en_cours = True
+        self.premier_clic = True
+
+        # Créer les frames une seule fois
+        self.info_frame = tk.Frame(self.root)
+        self.info_frame.pack(fill=tk.X)
+
+        self.jeu_frame = tk.Frame(self.root)
+        self.jeu_frame.pack()
+
+        # Initialiser l'interface
+        self.creer_menu()
+
+    def creer_menu(self):
+        """Crée le menu pour choisir la difficulté"""
+        # Nettoyer les frames existantes
+        for widget in self.info_frame.winfo_children():
+            widget.destroy()
+        for widget in self.jeu_frame.winfo_children():
+            widget.destroy()
+
+        tk.Label(self.info_frame, text="Choisissez la difficulté:").pack()
+
+        tk.Button(self.info_frame, text="Facile (8x13, 10 mines)",
+                  command=lambda: self.configurer_jeu(8, 13, 10)).pack(fill=tk.X)
+        tk.Button(self.info_frame, text="Moyen (16x16, 40 mines)",
+                  command=lambda: self.configurer_jeu(16, 16, 40)).pack(fill=tk.X)
+        tk.Button(self.info_frame, text="Difficile (16x30, 99 mines)",
+                  command=lambda: self.configurer_jeu(16, 30, 99)).pack(fill=tk.X)
+
+    def configurer_jeu(self, lignes, colonnes, mines):
+        """Configure le jeu avec les paramètres choisis"""
+        self.lignes = lignes
+        self.colonnes = colonnes
+        self.mines = mines
+        self.initialiser_jeu()
+
+    def initialiser_jeu(self):
+        """Initialise le jeu avec une nouvelle grille"""
+        # Réinitialiser les variables
+        self.grille = [[0 for _ in range(self.colonnes)] for _ in range(self.lignes)]
+        self.cases_decouvertes = [[False for _ in range(self.colonnes)] for _ in range(self.lignes)]
+        self.drapeaux = [[False for _ in range(self.colonnes)] for _ in range(self.lignes)]
+        self.partie_en_cours = True
+        self.premier_clic = True
+        self.mines_restantes = self.mines
+
+        # Nettoyer les frames existantes
+        for widget in self.info_frame.winfo_children():
+            widget.destroy()
+        for widget in self.jeu_frame.winfo_children():
+            widget.destroy()
+
+        # Recréer l'interface de jeu
+        self.creer_interface()
+
+    def creer_interface(self):
+        """Crée l'interface de jeu"""
+        # Frame pour le compteur de mines et le bouton de réinitialisation
+        self.label_mines = tk.Label(self.info_frame, text=f"Mines: {self.mines_restantes}", font=('Arial', 12))
+        self.label_mines.pack(side=tk.LEFT, padx=10)
+
+        self.bouton_rejouer = tk.Button(self.info_frame, text="Rejouer", command=self.creer_menu)
+        self.bouton_rejouer.pack(side=tk.RIGHT, padx=10)
+
+        # Créer les boutons de la grille
+        self.boutons = []
+        for i in range(self.lignes):
+            rangee = []
+            for j in range(self.colonnes):
+                bouton = tk.Button(self.jeu_frame, width=2, height=1, font=('Arial', 10, 'bold'))
+                bouton.bind('<Button-1>', lambda e, x=i, y=j: self.clic_gauche(x, y))
+                bouton.bind('<Button-3>', lambda e, x=i, y=j: self.clic_droit(x, y))
+                bouton.grid(row=i, column=j)
+                rangee.append(bouton)
+            self.boutons.append(rangee)
+
+    def placer_mines(self, x, y):
+        """Place les mines aléatoirement dans la grille, en évitant la case du premier clic"""
+        cases_sans_mine = [(x, y)]
+
+        # Ajouter les cases adjacentes à la case cliquée
+        for dx in [-1, 0, 1]:
+            for dy in [-1, 0, 1]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.lignes and 0 <= ny < self.colonnes:
+                    cases_sans_mine.append((nx, ny))
+
+        # Placer les mines
+        mines_placees = 0
+        while mines_placees < self.mines:
+            i = random.randint(0, self.lignes - 1)
+            j = random.randint(0, self.colonnes - 1)
+
+            if (i, j) not in cases_sans_mine and self.grille[i][j] != -1:
+                self.grille[i][j] = -1  # -1 représente une mine
+                mines_placees += 1
+
+                # Mettre à jour les nombres autour de la mine
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        ni, nj = i + dx, j + dy
+                        if 0 <= ni < self.lignes and 0 <= nj < self.colonnes and self.grille[ni][nj] != -1:
+                            self.grille[ni][nj] += 1
+
+    def clic_gauche(self, x, y):
+        """Gère le clic gauche (découvrir une case)"""
+        if not self.partie_en_cours or self.drapeaux[x][y]:
+            return
+
+        if self.premier_clic:
+            self.premier_clic = False
+            self.placer_mines(x, y)
+
+        if self.grille[x][y] == -1:  # Mine
+            self.boutons[x][y].config(text="💣", bg='red')
+            self.partie_en_cours = False
+            self.reveler_mines()
+            messagebox.showinfo("Perdu", "Vous avez cliqué sur une mine !")
+        else:
+            self.decouvrir_case(x, y)
+            if self.verifier_victoire():
+                self.partie_en_cours = False
+                messagebox.showinfo("Gagné", "Félicitations, vous avez gagné !")
+
+    def clic_droit(self, x, y):
+        """Gère le clic droit (placer/enlever un drapeau)"""
+        if not self.partie_en_cours or self.cases_decouvertes[x][y]:
+            return
+
+        if self.drapeaux[x][y]:
+            self.drapeaux[x][y] = False
+            self.boutons[x][y].config(text="", bg='SystemButtonFace')
+            self.mines_restantes += 1
+        else:
+            self.drapeaux[x][y] = True
+            self.boutons[x][y].config(text="🚩", bg='light yellow')
+            self.mines_restantes -= 1
+
+        self.label_mines.config(text=f"Mines: {self.mines_restantes}")
+
+    def decouvrir_case(self, x, y):
+        """Découvre une case et les cases adjacentes si nécessaire"""
+        if not self.partie_en_cours or self.cases_decouvertes[x][y] or self.drapeaux[x][y]:
+            return
+
+        self.cases_decouvertes[x][y] = True
+        self.boutons[x][y].config(relief=tk.SUNKEN, bg='light gray')
+
+        if self.grille[x][y] > 0:
+            couleurs = ['', 'blue', 'green', 'red', 'dark blue', 'brown', 'cyan', 'black', 'gray']
+            self.boutons[x][y].config(text=str(self.grille[x][y]), fg=couleurs[self.grille[x][y]])
+        elif self.grille[x][y] == 0:
+            # Découvrir récursivement les cases adjacentes
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < self.lignes and 0 <= ny < self.colonnes:
+                        self.decouvrir_case(nx, ny)
+
+    def reveler_mines(self):
+        """Révèle toutes les mines à la fin du jeu"""
+        for i in range(self.lignes):
+            for j in range(self.colonnes):
+                if self.grille[i][j] == -1 and not self.drapeaux[i][j]:
+                    self.boutons[i][j].config(text="💣")
+                elif self.grille[i][j] != -1 and self.drapeaux[i][j]:
+                    self.boutons[i][j].config(text="❌", bg='pink')
+
+    def verifier_victoire(self):
+        """Vérifie si le joueur a gagné"""
+        cases_a_decouvrir = 0
+        for i in range(self.lignes):
+            for j in range(self.colonnes):
+                if not self.cases_decouvertes[i][j] and self.grille[i][j] != -1:
+                    cases_a_decouvrir += 1
+        return cases_a_decouvrir == 0
+
+
+# Lancer le jeu
+if __name__ == "__main__":
+    root = tk.Tk()
+    jeu = Demineur(root)
+    root.mainloop()
