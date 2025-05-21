@@ -91,3 +91,113 @@ for r in range(rows):
     boutons.append(row_buttons)
 '''''''''''''''''''''''''''''''''''''''''
 root.mainloop()
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue May 20 14:36:02 2025
+
+@author: Cité Scolaire
+"""
+from tkinter import *
+from random import randint 
+from tkinter import messagebox
+
+def mines_compteur(r, c):
+    count = 0
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:#y'a juste ces 3 options(-1,0,1) cad recule,rester et avancer
+            if dr == 0 and dc == 0:
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) in mine_positions:
+                count += 1
+    return count
+
+#devoiler la case si un clique gauche
+def clique_gauche(r, c):
+    if (r, c) in flagged or (r, c) in devoile:
+        return
+
+    if (r, c) in mine_positions:
+        # clique sur la position d'une mine et le jeu se termine
+        for (mr, mc) in mine_positions:
+            boutons[mr][mc].config(text="💣", bg="red")
+        messagebox.showinfo("jeu terminé", "t'es mort   ")
+        root.destroy()
+        return
+
+    devoile.add((r, c))
+    mines_nearby = mines_compteur(r, c)
+    couleurs= ["dark blue","dark green","red", "purple", "orange", "lightblue"]
+
+    if mines_nearby > 0:
+        boutons[r][c].config(text=str(mines_nearby),relief=SUNKEN, fg= couleurs[mines_nearby-1]) # des effets speciaux :)
+    else:
+        boutons[r][c].config(text="", relief=SUNKEN)
+        # si autour de ce case c tous des cases safes, ils se devoilent directement
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in devoile:
+                    clique_gauche(nr, nc)
+
+    # derriere verfication de gagner
+    if len(devoile) == rows * cols - mines:
+        messagebox.showinfo("felicitation", "t'as gagne！",)
+        root.destroy()
+
+
+
+def clique_droit(r, c):
+    if (r, c) in devoile:
+        return
+
+    if (r, c) in flagged:
+        flagged.remove((r, c))
+        boutons[r][c].config(text="", bg="SystemButtonFace")
+    else:
+        flagged.add((r, c))
+        boutons[r][c].config(text="F", bg="yellow")
+
+#------------------------------------------------------------------------------ jeu ------------------------------------------
+# |      ------  |------|
+# |      |___    |      |
+# |      |       |      |
+# |______|______ |------|
+rows = 8
+cols = 13
+mines = 10
+
+root = Tk()
+root.title("Demineur")
+boutons = []
+
+mine_positions = set()
+flagged = set()
+devoile = set()
+# set() comme ca ya pas repetitions
+
+# mise en pkace des mines aleatoires
+while len(mine_positions) < mines:
+    r = randint(0, rows - 1)
+    c = randint(0, cols - 1)
+    mine_positions.add((r, c))
+
+for r in range(rows):
+    row_buttons = []
+    for c in range(cols):
+        btn = Button(root, width=2, height=1,
+                        command=lambda r=r, c=c: clique_gauche(r, c))
+        btn.bind("<Button-3>", lambda event, r=r, c=c: clique_droit(r, c))
+        btn.grid(row=r, column=c)
+        row_buttons.append(btn)
+    boutons.append(row_buttons)
+
+
+quitter = Button(root, text="quit", command=root.destroy)
+quitter.grid(row=rows, column=0, columnspan=cols)
+
+root.mainloop()
