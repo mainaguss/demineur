@@ -95,9 +95,10 @@ def clique_gauche(r, c):
                     clique_gauche(nr, nc)
 
     if len(devoile) == rows * cols - mines:
-        temps_ecoule = int(time.time() - jeu_temps)
-        messagebox.showinfo("felicitation", f"t'as gagne en {temps_ecoule} secondes！")
+        elapsed_time = int(time.time() - jeu_temps)
+        messagebox.showinfo("felicitation", f"t'as gagne en {elapsed_time} secondes！")
         root.destroy()
+
 
 
 def clique_droit(r, c):
