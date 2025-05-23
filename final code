@@ -1,0 +1,161 @@
+from tkinter import *
+from random import randint
+from tkinter import messagebox
+import time
+
+
+def menudifficultes():
+    choix = Tk()
+    choix.title("difficulte")
+    result = [None]
+
+    def facile():
+        result[0] = (8, 10, 10)
+        choix.destroy()
+
+    def moyen():
+        result[0] = (14, 18, 40)
+        choix.destroy()
+
+    def difficile():
+        result[0] = (20, 24, 99)
+        choix.destroy()
+
+    Label(choix, text="Choisir difficulté:", font=("Monaco", 12)).pack(pady=10)
+    Button(choix, text="Facile (8x10)", font=("Monaco", 12), command=facile, width=15).pack(pady=2)
+    Button(choix, text="Moyen (14x18)", font=("Monaco", 12), command=moyen, width=15).pack(pady=2)
+    Button(choix, text="Difficile (20x24)", font=("Monaco", 12), command=difficile, width=15).pack(pady=2)
+
+    choix.mainloop()
+    return result[0]
+
+
+def mines_compteur(r, c):
+    count = 0
+    for dr in [-1, 0, 1]:
+        for dc in [-1, 0, 1]:
+            if dr == 0 and dc == 0:
+                continue
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) in mine_positions:
+                count += 1
+    return count
+
+
+def clique_gauche(r, c):
+    global jeu_temps, mine_positions, premier_clique
+
+    if premier_clique:
+        # Définir la zone de sécurité (3x3 autour du premier clic)
+        safe_zone = set()
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols:
+                    safe_zone.add((nr, nc))
+
+        # Retirer les mines de safe zone
+        mine_positions = mine_positions - safe_zone
+
+        # Ajouter de nouvelles mines pour compenser celles retirées, donc le nb total de mine ne change pas
+        while len(mine_positions) < mines:
+            mr = randint(0, rows - 1)
+            mc = randint(0, cols - 1)
+            if (mr, mc) not in safe_zone:
+                mine_positions.add((mr, mc))
+
+        premier_clique = False # etat confirme
+        jeu_temps = time.time()
+        update_timer()
+
+    if (r, c) in flagged or (r, c) in devoile:
+        return
+
+    if (r, c) in mine_positions:
+        for (mr, mc) in mine_positions:
+            boutons[mr][mc].config(text="💣", bg="red")
+        messagebox.showinfo("jeu terminé", "t'es mort   ")
+        root.destroy()
+        return
+
+    devoile.add((r, c))
+    mines_nearby = mines_compteur(r, c)
+    couleurs = ["dark blue", "dark green", "red", "purple", "orange", "lightblue"]# plus de couleurs yeyeye :)
+
+    if mines_nearby > 0:
+        boutons[r][c].config(text=str(mines_nearby), relief=SUNKEN, fg=couleurs[mines_nearby - 1])
+    else:
+        boutons[r][c].config(text="", relief=SUNKEN)
+        for dr in [-1, 0, 1]:
+            for dc in [-1, 0, 1]:
+                if dr == 0 and dc == 0:
+                    continue
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and (nr, nc) not in devoile:
+                    clique_gauche(nr, nc)
+
+    if len(devoile) == rows * cols - mines:
+        temps_ecoule = int(time.time() - jeu_temps)
+        messagebox.showinfo("felicitation", f"t'as gagne en {temps_ecoule} secondes！")
+        root.destroy()
+
+
+def clique_droit(r, c):
+    if (r, c) in devoile:
+        return
+
+    if (r, c) in flagged:
+        flagged.remove((r, c))
+        boutons[r][c].config(text="", bg="SystemButtonFace")
+    else:
+        flagged.add((r, c))
+        boutons[r][c].config(text="🚩", bg="yellow")
+
+
+def update_timer():
+    if jeu_temps:
+        elapsed_time = int(time.time() - jeu_temps)
+        timer_label.config(text=f"Temps: {elapsed_time}s")
+        root.after(1000, update_timer)
+
+
+# Paramètres du jeu
+difficulte = menudifficultes()
+rows, cols, mines = difficulte
+
+root = Tk()
+root.title("Demineur")
+
+# Variables pour le jeu
+jeu_temps = None
+premier_clique = True
+mine_positions = set()
+flagged = set()
+devoile = set()
+
+# Placement initial des mines (sera ajusté au premier clic)
+while len(mine_positions) < mines:
+    r = randint(0, rows - 1)
+    c = randint(0, cols - 1)
+    mine_positions.add((r, c))
+
+# Création des boutons
+boutons = []
+for r in range(rows):
+    row_buttons = []
+    for c in range(cols):
+        btn = Button(root, width=2, height=1,
+                     command=lambda r=r, c=c: clique_gauche(r, c))
+        btn.bind("<Button-3>", lambda event, r=r, c=c: clique_droit(r, c))
+        btn.grid(row=r, column=c)
+        row_buttons.append(btn)
+    boutons.append(row_buttons)
+
+# Timer et bouton quitter
+timer_label = Label(root, text="Temps: 0s", font=('Arial', 10))
+timer_label.grid(row=rows + 1, column=0, columnspan=cols, pady=5)
+
+quitter = Button(root, text="quit", command=root.destroy)
+quitter.grid(row=rows + 2, column=0, columnspan=cols)
+
+root.mainloop()
