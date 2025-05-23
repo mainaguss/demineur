@@ -66,7 +66,7 @@ def clique_gauche(r, c):
 
         premier_clique = False # etat confirme
         jeu_temps = time.time()
-        update_timer()
+        chronometre()
 
     if (r, c) in flagged or (r, c) in devoile:
         return
@@ -113,11 +113,11 @@ def clique_droit(r, c):
         boutons[r][c].config(text="🚩", bg="yellow")
 
 
-def update_timer():
+def chronometre():
     if jeu_temps:
         elapsed_time = int(time.time() - jeu_temps)
         timer_label.config(text=f"Temps: {elapsed_time}s")
-        root.after(1000, update_timer)
+        root.after(1000, chronometre)
 
 
 # Paramètres du jeu
